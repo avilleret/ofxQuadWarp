@@ -130,8 +130,21 @@ void ofxQuadWarp::setTargetPoints(const vector<ofPoint>& points) {
     }
 }
 
+void ofxQuadWarp::setSourcePoints(const vector<ofPoint>& points) {
+    int t = MIN(4, points.size());
+    for(int i=0; i<t; i++) {
+        srcPoints[i].set(points[i]);
+    }
+}
+
+
 vector<ofPoint> ofxQuadWarp::getTargetPoints() {
     vector<ofPoint> points(dstPoints, dstPoints + sizeof dstPoints / sizeof dstPoints[0]);
+    return points;
+}
+
+vector<ofPoint> ofxQuadWarp::getSourcePoints() {
+    vector<ofPoint> points(srcPoints, srcPoints + sizeof srcPoints / sizeof srcPoints[0]);
     return points;
 }
 
