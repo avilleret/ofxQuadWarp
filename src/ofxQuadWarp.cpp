@@ -124,7 +124,7 @@ void ofxQuadWarp::setTargetRect(const ofRectangle& r) {
 }
 
 void ofxQuadWarp::setTargetPoints(const vector<ofPoint>& points) {
-    int t = MIN(4, points.size());
+    int t = std::max(4, static_cast<int>(points.size()));
     for(int i=0; i<t; i++) {
         dstPoints[i].set(points[i]);
     }
