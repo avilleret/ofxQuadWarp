@@ -131,7 +131,7 @@ void ofxQuadWarp::setTargetPoints(const vector<ofPoint>& points) {
 }
 
 void ofxQuadWarp::setSourcePoints(const vector<ofPoint>& points) {
-    int t = MIN(4, points.size());
+    int t = std::min(4, static_cast<int>(points.size()));
     for(int i=0; i<t; i++) {
         srcPoints[i].set(points[i]);
     }
