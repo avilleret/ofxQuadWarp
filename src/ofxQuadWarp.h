@@ -30,6 +30,12 @@ public:
     void enableKeyboardShortcuts();
     void disableKeyboardShortcuts();
 
+    void enableMouseControlsSrc();
+    void disableMouseControlsSrc();
+
+    void enableKeyboardShortcutsSrc();
+    void disableKeyboardShortcutsSrc();
+
     bool hitTest(ofVec2f pos); // checks whether `pos` is within the warped quad
     ofRectangle boundingBox(); // calculates and returns a bounding box
     
@@ -43,16 +49,24 @@ public:
     void show();
     void hide();
     void toggleShow();
+    void showSrc();
+    void hideSrc();
+    void toggleShowSrc();
     bool isShowing();
     
     void save(const string& path="quadwarp.xml");
     void load(const string& path="quadwarp.xml");
     
     void draw();
+    void drawSrc();
     void drawQuadOutline();
+    void drawQuadOutline(ofPoint* point);
     void drawCorners();
+    void drawCorners(ofPoint* points);
+    void drawHighlightedCorner(ofPoint* points);
     void drawHighlightedCorner();
     void drawSelectedCorner();
+    void drawSelectedCorner(ofPoint* points);
     void drawCornerAt(const ofPoint& point);
 
     void onMouseMoved(ofMouseEventArgs & mouseArgs);
@@ -62,6 +76,12 @@ public:
     void keyPressed(ofKeyEventArgs & keyArgs);
     void keyReleased(ofKeyEventArgs & keyArgs);
 
+    void onMouseMovedSrc(ofMouseEventArgs & mouseArgs);
+    void onMousePressedSrc(ofMouseEventArgs & mouseArgs);
+    void onMouseDraggedSrc(ofMouseEventArgs & mouseArgs);
+    void onMouseReleasedSrc(ofMouseEventArgs & mouseArgs);
+    void keyPressedSrc(ofKeyEventArgs & keyArgs);
+
 protected:
     ofPoint srcPoints[4];
     ofPoint dstPoints[4];
@@ -70,9 +90,9 @@ protected:
     int selectedCornerIndex;
     int highlightCornerIndex;
     
-    bool bMouseEnabled;
-    bool bKeyboardShortcuts;
-    bool bShow;
+    bool bMouseEnabled, bMouseEnabledSrc;
+    bool bKeyboardShortcuts, bKeyboardShortcutsSrc;
+    bool bShow, bShowSrc;
 
     bool bShiftPressed;
 };

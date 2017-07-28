@@ -86,6 +86,62 @@ void ofxQuadWarp::disableKeyboardShortcuts() {
     }
 }
 
+void ofxQuadWarp::enableMouseControlsSrc() {
+    if(bMouseEnabledSrc == true) {
+        return;
+    }
+    if(bMouseEnabled == true){
+      disableMouseControls();
+    }
+    bMouseEnabledSrc = true;
+    ofAddListener(ofEvents().mouseMoved, this, &ofxQuadWarp::onMouseMovedSrc);
+    ofAddListener(ofEvents().mousePressed, this, &ofxQuadWarp::onMousePressedSrc);
+    ofAddListener(ofEvents().mouseDragged, this, &ofxQuadWarp::onMouseDraggedSrc);
+    ofAddListener(ofEvents().mouseReleased, this, &ofxQuadWarp::onMouseReleasedSrc);
+}
+
+void ofxQuadWarp::disableMouseControlsSrc() {
+    if(bMouseEnabledSrc == false) {
+        return;
+    }
+    bMouseEnabledSrc = false;
+    try {
+        ofRemoveListener(ofEvents().mouseMoved, this, &ofxQuadWarp::onMouseMovedSrc);
+        ofRemoveListener(ofEvents().mousePressed, this, &ofxQuadWarp::onMousePressedSrc);
+        ofRemoveListener(ofEvents().mouseDragged, this, &ofxQuadWarp::onMouseDraggedSrc);
+        ofRemoveListener(ofEvents().mouseReleased, this, &ofxQuadWarp::onMouseReleasedSrc);
+    }
+    catch(Poco::SystemException) {
+        return;
+    }
+}
+
+void ofxQuadWarp::enableKeyboardShortcutsSrc() {
+    if(bKeyboardShortcutsSrc == true) {
+        return;
+    }
+    if(bKeyboardShortcuts == true){
+      disableKeyboardShortcuts();
+    }
+    bKeyboardShortcutsSrc = true;
+    ofAddListener(ofEvents().keyPressed, this, &ofxQuadWarp::keyPressedSrc);
+    ofAddListener(ofEvents().keyReleased, this, &ofxQuadWarp::keyReleased);
+}
+
+void ofxQuadWarp::disableKeyboardShortcutsSrc() {
+    if(bKeyboardShortcutsSrc == false) {
+        return;
+    }
+    bKeyboardShortcutsSrc = false;
+    try {
+        ofRemoveListener(ofEvents().keyPressed, this, &ofxQuadWarp::keyPressedSrc);
+        ofRemoveListener(ofEvents().keyReleased, this, &ofxQuadWarp::keyReleased);
+    }
+    catch(Poco::SystemException) {
+        return;
+    }
+}
+
 bool ofxQuadWarp::hitTest(ofVec2f pos) {
     // apply the inverse transformation to our hit point and then
     // compare to the input rectangle
@@ -255,10 +311,112 @@ void ofxQuadWarp::keyReleased(ofKeyEventArgs& keyArgs) {
         bShiftPressed = false;
 }
 
+//----------------------------------------------------- interaction for source points.
+void ofxQuadWarp::onMouseMovedSrc(ofMouseEventArgs& mouseArgs) {
+    if(bShowSrc == false) {
+        return;
+    }
+
+    ofPoint mousePoint(mouseArgs.x, mouseArgs.y);
+    for(int i=0; i<4; i++) {
+        ofPoint & srcPoint = srcPoints[i];
+        if(mousePoint.distance(srcPoint) <= anchorSize * 0.5) {
+            highlightCornerIndex = i;
+            return;
+        }
+    }
+    highlightCornerIndex = -1;
+}
+
+void ofxQuadWarp::onMousePressedSrc(ofMouseEventArgs& mouseArgs) {
+    if(bShowSrc == false) {
+        return;
+    }
+
+    ofPoint mousePoint(mouseArgs.x, mouseArgs.y);
+    for(int i=0; i<4; i++) {
+        ofPoint & srcPoint = srcPoints[i];
+        if(mousePoint.distance(srcPoint) <= anchorSize * 0.5) {
+            srcPoint.set(mousePoint);
+            selectedCornerIndex = i;
+            return;
+        }
+    }
+    selectedCornerIndex = -1;
+}
+
+void ofxQuadWarp::onMouseDraggedSrc(ofMouseEventArgs& mouseArgs) {
+    if(bShowSrc == false) {
+        return;
+    }
+    if(selectedCornerIndex < 0) return; // no corner selected
+
+    ofPoint mousePoint(mouseArgs.x, mouseArgs.y);
+    srcPoints[selectedCornerIndex].set(mousePoint);
+}
+
+void ofxQuadWarp::onMouseReleasedSrc(ofMouseEventArgs& mouseArgs) {
+    if(bShowSrc == false) {
+        return;
+    }
+    if(selectedCornerIndex < 0) return; // none selected
+
+    ofPoint mousePoint(mouseArgs.x, mouseArgs.y);
+    srcPoints[selectedCornerIndex].set(mousePoint);
+}
+
+void ofxQuadWarp::keyPressedSrc(ofKeyEventArgs& keyArgs) {
+    if(bShowSrc == false) {
+        return;
+    }
+
+    if(keyArgs.key == OF_KEY_SHIFT)
+        bShiftPressed = true;
+
+    if(keyArgs.key == 'p') { // select nxt pt
+        selectedCornerIndex = (selectedCornerIndex + 1) % 4;
+    }
+    else if(keyArgs.key == 'o') { // select prev pt
+        selectedCornerIndex = (selectedCornerIndex - 1);
+        if(selectedCornerIndex < 0)
+            selectedCornerIndex = 3;
+    }
+
+    if(selectedCornerIndex < 0) return; // no corner selected. only happens if we didn't select one using 'o'/'p' before
+
+    float nudgeAmount = 0.25;
+    if(bShiftPressed) nudgeAmount = 10;
+    ofPoint & selectedPoint = srcPoints[selectedCornerIndex];
+
+    switch (keyArgs.key) {
+    case OF_KEY_LEFT:
+        selectedPoint.x -= nudgeAmount;
+        break;
+    case OF_KEY_RIGHT:
+        selectedPoint.x += nudgeAmount;
+        break;
+    case OF_KEY_UP:
+        selectedPoint.y -= nudgeAmount;
+        break;
+    case OF_KEY_DOWN:
+        selectedPoint.y += nudgeAmount;
+        break;
+    default:
+        break;
+    }
+}
+
 //----------------------------------------------------- show / hide.
 void ofxQuadWarp::show() {
     if(bShow) return;
+    if(bShowSrc) bShowSrc = false;
     toggleShow();
+}
+
+void ofxQuadWarp::showSrc() {
+    if(bShowSrc) return;
+    if(bShow) bShow = false;
+    toggleShowSrc();
 }
 
 void ofxQuadWarp::hide() {
@@ -266,8 +424,17 @@ void ofxQuadWarp::hide() {
     toggleShow();
 }
 
+void ofxQuadWarp::hideSrc() {
+    if(!bShowSrc) return;
+    toggleShowSrc();
+}
+
 void ofxQuadWarp::toggleShow() {
     bShow = !bShow;
+}
+
+void ofxQuadWarp::toggleShowSrc() {
+    bShowSrc = !bShowSrc;
 }
 
 bool ofxQuadWarp::isShowing() {
@@ -362,58 +529,91 @@ void ofxQuadWarp::load(const string& path) {
 
 //----------------------------------------------------- show / hide.
 void ofxQuadWarp::draw() {
-    if(bShow == false) return;
+  ofPushStyle();
+    if(bShow){
+      ofSetColor(ofColor::cyan);
+      drawQuadOutline();
 
-    ofSetColor(ofColor::cyan);
-    drawQuadOutline();
-    
-    ofSetColor(ofColor::yellow);
-    drawCorners();
-    
-    ofSetColor(ofColor::magenta);
-    drawHighlightedCorner();
-    
-    ofSetColor(ofColor::red);
-    drawSelectedCorner();
+      ofSetColor(ofColor::yellow);
+      drawCorners();
 
-    ofSetColor(ofColor::white);
+      ofSetColor(ofColor::magenta);
+      drawHighlightedCorner();
+
+      ofSetColor(ofColor::red);
+      drawSelectedCorner();
+    } else if(bShowSrc){
+      ofSetColor(ofColor::cyan);
+      drawQuadOutline(srcPoints);
+
+      ofSetColor(ofColor::yellow);
+      drawCorners(srcPoints);
+
+      ofSetColor(ofColor::magenta);
+      drawHighlightedCorner(srcPoints);
+
+      ofSetColor(ofColor::red);
+      drawSelectedCorner(srcPoints);
+    }
+    ofPopStyle();
+}
+
+void ofxQuadWarp::drawSrc() {
+
 }
 
 void ofxQuadWarp::drawQuadOutline() {
-    if(bShow == false) return;
+  drawQuadOutline(dstPoints);
+}
+
+void ofxQuadWarp::drawQuadOutline(ofPoint* points) {
+    if((bShow || bShowSrc) == false) return;
     
     for(int i=0; i<4; i++) {
         int j = (i+1) % 4;
-        ofDrawLine(dstPoints[i].x,
-                   dstPoints[i].y,
-                   dstPoints[j].x,
-                   dstPoints[j].y);
+        ofDrawLine(points[i].x,
+                   points[i].y,
+                   points[j].x,
+                   points[j].y);
     }
 }
 
 void ofxQuadWarp::drawCorners() {
-    if(bShow == false) return;
+  drawCorners(dstPoints);
+}
+
+void ofxQuadWarp::drawCorners(ofPoint* points) {
+    if((bShow || bShowSrc) == false) return;
 
     for(int i=0; i<4; i++) {
-        ofPoint & point = dstPoints[i];
+        ofPoint & point = points[i];
         drawCornerAt(point);
     }
 }
 
 void ofxQuadWarp::drawHighlightedCorner() {
-    if(bShow == false) return;
-    
+  drawHighlightedCorner(dstPoints);
+}
+
+void ofxQuadWarp::drawHighlightedCorner(ofPoint* points) {
+    if((bShow || bShowSrc) == false) return;
+
     if(highlightCornerIndex < 0) return;
 
-    ofPoint & point = dstPoints[highlightCornerIndex];
+    ofPoint & point = points[highlightCornerIndex];
     drawCornerAt(point);
 }
 
 void ofxQuadWarp::drawSelectedCorner() {
-    if(bShow == false) return;
+  drawSelectedCorner(dstPoints);
+}
+
+void ofxQuadWarp::drawSelectedCorner(ofPoint* points) {
+    if((bShow || bShowSrc) == false) return;
+
     if(selectedCornerIndex < 0) return;
     
-    ofPoint & point = dstPoints[selectedCornerIndex];
+    ofPoint & point = points[selectedCornerIndex];
     drawCornerAt(point);
 }
 
