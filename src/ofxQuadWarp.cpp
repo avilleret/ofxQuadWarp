@@ -20,6 +20,8 @@ ofxQuadWarp::ofxQuadWarp() {
 ofxQuadWarp::~ofxQuadWarp() {
     disableMouseControls();
     disableKeyboardShortcuts();
+    disableMouseControlsSrc();
+    disableKeyboardShortcutsSrc();
 }
 
 //----------------------------------------------------- setup.
@@ -556,7 +558,7 @@ void ofxQuadWarp::draw() {
       ofSetColor(ofColor::red);
       drawSelectedCorner();
     } else if(bShowSrc){
-      ofSetColor(ofColor::cyan);
+      ofSetColor(ofColor::green);
       drawQuadOutline(srcPoints);
 
       ofSetColor(ofColor::yellow);

@@ -88,13 +88,13 @@ protected:
     ofPoint srcPoints[4];
     ofPoint dstPoints[4];
     
-    float anchorSize;
-    int selectedCornerIndex;
-    int highlightCornerIndex;
+    float anchorSize{};
+    int selectedCornerIndex{};
+    int highlightCornerIndex{};
     
-    bool bMouseEnabled, bMouseEnabledSrc;
-    bool bKeyboardShortcuts, bKeyboardShortcutsSrc;
-    bool bShow, bShowSrc;
+    bool bMouseEnabled{}, bMouseEnabledSrc{};
+    bool bKeyboardShortcuts{}, bKeyboardShortcutsSrc{};
+    bool bShow{}, bShowSrc{};
 
-    bool bShiftPressed;
+    bool bShiftPressed{};
 };
