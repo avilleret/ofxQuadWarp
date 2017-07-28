@@ -180,14 +180,27 @@ void ofxQuadWarp::setTargetRect(const ofRectangle& r) {
 }
 
 void ofxQuadWarp::setTargetPoints(const vector<ofPoint>& points) {
-    int t = MIN(4, points.size());
+    int t = std::max(4, static_cast<int>(points.size()));
     for(int i=0; i<t; i++) {
         dstPoints[i].set(points[i]);
     }
 }
 
+void ofxQuadWarp::setSourcePoints(const vector<ofPoint>& points) {
+    int t = std::min(4, static_cast<int>(points.size()));
+    for(int i=0; i<t; i++) {
+        srcPoints[i].set(points[i]);
+    }
+}
+
+
 vector<ofPoint> ofxQuadWarp::getTargetPoints() {
     vector<ofPoint> points(dstPoints, dstPoints + sizeof dstPoints / sizeof dstPoints[0]);
+    return points;
+}
+
+vector<ofPoint> ofxQuadWarp::getSourcePoints() {
+    vector<ofPoint> points(srcPoints, srcPoints + sizeof srcPoints / sizeof srcPoints[0]);
     return points;
 }
 
