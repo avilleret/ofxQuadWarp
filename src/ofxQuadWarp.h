@@ -43,10 +43,15 @@ public:
     
     void update();
     void reset();
+
+    void setNormalize(bool b){
+        bNormalize=b;
+    }
     
     ofMatrix4x4 getMatrix() const;
+    ofMatrix4x4 getMatrix(ofVec3f scale) const;
     ofMatrix4x4 getMatrixInverse() const;
-    ofMatrix4x4 getMatrix(const ofPoint * srcPoints, const ofPoint * dstPoints) const;
+    ofMatrix4x4 getMatrix(const std::vector<ofPoint>& srcPoints, const std::vector<ofPoint>& dstPoints) const;
     
     void show();
     void hide();
@@ -62,13 +67,13 @@ public:
     void draw();
     void drawSrc();
     void drawQuadOutline();
-    void drawQuadOutline(ofPoint* point);
+    void drawQuadOutline(const std::vector<ofPoint>& point);
     void drawCorners();
-    void drawCorners(ofPoint* points);
-    void drawHighlightedCorner(ofPoint* points);
+    void drawCorners(const std::vector<ofPoint>& points);
+    void drawHighlightedCorner(const std::vector<ofPoint>& points);
     void drawHighlightedCorner();
     void drawSelectedCorner();
-    void drawSelectedCorner(ofPoint* points);
+    void drawSelectedCorner(const std::vector<ofPoint>& points);
     void drawCornerAt(const ofPoint& point);
 
     void onMouseMoved(ofMouseEventArgs & mouseArgs);
@@ -85,8 +90,8 @@ public:
     void keyPressedSrc(ofKeyEventArgs & keyArgs);
 
 protected:
-    ofPoint srcPoints[4];
-    ofPoint dstPoints[4];
+    std::vector<ofPoint> srcPoints;
+    std::vector<ofPoint> dstPoints;
     
     float anchorSize{};
     int selectedCornerIndex{};
@@ -97,4 +102,7 @@ protected:
     bool bShow{}, bShowSrc{};
 
     bool bShiftPressed{};
+
+    // wether the mouse coordinate are normalized (or not) against ofWindow size
+    bool bNormalize = false;
 };

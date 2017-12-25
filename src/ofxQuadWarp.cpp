@@ -10,6 +10,9 @@ ofxQuadWarp::ofxQuadWarp() {
     anchorSize = 10;
     selectedCornerIndex = -1;
     highlightCornerIndex = -1;
+
+    srcPoints.resize(4);
+    dstPoints.resize(4);
     
     bMouseEnabled = false;
     bKeyboardShortcuts = false;
@@ -183,8 +186,15 @@ void ofxQuadWarp::setTargetRect(const ofRectangle& r) {
 
 void ofxQuadWarp::setTargetPoints(const vector<ofPoint>& points) {
     int t = std::max(4, static_cast<int>(points.size()));
-    for(int i=0; i<t; i++) {
-        dstPoints[i].set(points[i]);
+    if (bNormalize)
+    {
+        for(int i=0; i<t; i++) {
+            dstPoints[i].set(points[i] / ofGetWindowSize());
+        }
+    } else {
+        for(int i=0; i<t; i++) {
+            dstPoints[i].set(points[i]);
+        }
     }
 }
 
@@ -195,27 +205,47 @@ void ofxQuadWarp::setSourcePoints(const vector<ofPoint>& points) {
     }
 }
 
+std::vector<ofPoint> ofxQuadWarp::getTargetPoints() {
+    if(bNormalize)
+    {
+        std::vector<ofPoint> norm;
+        norm.reserve(4);
+        for (auto& p : dstPoints)
+            norm.push_back(p * ofGetWindowSize());
 
-vector<ofPoint> ofxQuadWarp::getTargetPoints() {
-    vector<ofPoint> points(dstPoints, dstPoints + sizeof dstPoints / sizeof dstPoints[0]);
-    return points;
+        return norm;
+    }
+    else
+        return dstPoints;
 }
 
-vector<ofPoint> ofxQuadWarp::getSourcePoints() {
-    vector<ofPoint> points(srcPoints, srcPoints + sizeof srcPoints / sizeof srcPoints[0]);
-    return points;
+std::vector<ofPoint> ofxQuadWarp::getSourcePoints() {
+    return srcPoints;
 }
 
 //----------------------------------------------------- matrix.
 ofMatrix4x4 ofxQuadWarp::getMatrix() const {
-    return getMatrix(&srcPoints[0], &dstPoints[0]);
+    return getMatrix(ofGetWindowSize());
+}
+
+ofMatrix4x4 ofxQuadWarp::getMatrix(ofVec3f scale) const {
+    auto src = srcPoints;
+    auto dst = dstPoints;
+
+    if (bNormalize)
+    {
+        for (auto& p : dst)
+            p *= scale;
+    }
+
+    return getMatrix(src,dst);
 }
 
 ofMatrix4x4 ofxQuadWarp::getMatrixInverse() const {
-    return getMatrix(&dstPoints[0], &srcPoints[0]);
+    return getMatrix(dstPoints, srcPoints);
 }
 
-ofMatrix4x4 ofxQuadWarp::getMatrix(const ofPoint* srcPoints, const ofPoint* dstPoints) const {
+ofMatrix4x4 ofxQuadWarp::getMatrix(const std::vector<ofPoint>& srcPoints, const std::vector<ofPoint>& dstPoints) const {
     return ofxHomography::findHomography(srcPoints, dstPoints);
 }
 
@@ -233,9 +263,16 @@ void ofxQuadWarp::onMouseMoved(ofMouseEventArgs& mouseArgs) {
     }
     
     ofPoint mousePoint(mouseArgs.x, mouseArgs.y);
+    float threshold = anchorSize * 0.5;
+
+    if (bNormalize){
+        mousePoint /= ofGetWindowSize();
+        threshold /= ofGetWidth();
+    }
+
     for(int i=0; i<4; i++) {
         ofPoint & dstPoint = dstPoints[i];
-        if(mousePoint.distance(dstPoint) <= anchorSize * 0.5) {
+        if(mousePoint.distance(dstPoint) <= threshold) {
             highlightCornerIndex = i;
             return;
         }
@@ -249,9 +286,16 @@ void ofxQuadWarp::onMousePressed(ofMouseEventArgs& mouseArgs) {
     }
     
     ofPoint mousePoint(mouseArgs.x, mouseArgs.y);
+    float threshold = anchorSize * 0.5;
+
+    if (bNormalize){
+        mousePoint /= ofGetWindowSize();
+        threshold /= ofGetWidth();
+    }
+
     for(int i=0; i<4; i++) {
         ofPoint & dstPoint = dstPoints[i];
-        if(mousePoint.distance(dstPoint) <= anchorSize * 0.5) {
+        if(mousePoint.distance(dstPoint) <= threshold) {
             dstPoint.set(mousePoint);
             selectedCornerIndex = i;
             return;
@@ -267,6 +311,10 @@ void ofxQuadWarp::onMouseDragged(ofMouseEventArgs& mouseArgs) {
     if(selectedCornerIndex < 0) return; // no corner selected
     
     ofPoint mousePoint(mouseArgs.x, mouseArgs.y);
+
+    if (bNormalize)
+        mousePoint /= ofGetWindowSize();
+
     dstPoints[selectedCornerIndex].set(mousePoint);
 }
 
@@ -277,6 +325,10 @@ void ofxQuadWarp::onMouseReleased(ofMouseEventArgs& mouseArgs) {
     if(selectedCornerIndex < 0) return; // none selected
     
     ofPoint mousePoint(mouseArgs.x, mouseArgs.y);
+
+    if (bNormalize)
+        mousePoint /= ofGetWindowSize();
+
     dstPoints[selectedCornerIndex].set(mousePoint);
 }
 
@@ -301,6 +353,9 @@ void ofxQuadWarp::keyPressed(ofKeyEventArgs& keyArgs) {
     
     float nudgeAmount = 0.25;
     if(bShiftPressed) nudgeAmount = 10;
+    if (bNormalize)
+        nudgeAmount /= ofGetWidth();
+
     ofPoint & selectedPoint = dstPoints[selectedCornerIndex];
     
     switch (keyArgs.key) {
@@ -546,18 +601,27 @@ void ofxQuadWarp::load(const string& path) {
 void ofxQuadWarp::draw() {
   ofPushStyle();
     if(bShow){
+
+      std::vector<ofPoint> points = dstPoints;
+      if (bNormalize)
+      {
+          for (auto& p : points)
+              p *= ofGetWindowSize();
+      }
       ofSetColor(ofColor::cyan);
-      drawQuadOutline();
+      drawQuadOutline(points);
 
       ofSetColor(ofColor::yellow);
-      drawCorners();
+      drawCorners(points);
 
       ofSetColor(ofColor::magenta);
-      drawHighlightedCorner();
+      drawHighlightedCorner(points);
 
       ofSetColor(ofColor::red);
-      drawSelectedCorner();
+      drawSelectedCorner(points);
+
     } else if(bShowSrc){
+
       ofSetColor(ofColor::green);
       drawQuadOutline(srcPoints);
 
@@ -569,6 +633,7 @@ void ofxQuadWarp::draw() {
 
       ofSetColor(ofColor::red);
       drawSelectedCorner(srcPoints);
+
     }
     ofPopStyle();
 }
@@ -581,7 +646,7 @@ void ofxQuadWarp::drawQuadOutline() {
   drawQuadOutline(dstPoints);
 }
 
-void ofxQuadWarp::drawQuadOutline(ofPoint* points) {
+void ofxQuadWarp::drawQuadOutline(const std::vector<ofPoint>& points) {
     if((bShow || bShowSrc) == false) return;
     
     for(int i=0; i<4; i++) {
@@ -597,12 +662,11 @@ void ofxQuadWarp::drawCorners() {
   drawCorners(dstPoints);
 }
 
-void ofxQuadWarp::drawCorners(ofPoint* points) {
+void ofxQuadWarp::drawCorners(const std::vector<ofPoint>& points) {
     if((bShow || bShowSrc) == false) return;
 
-    for(int i=0; i<4; i++) {
-        ofPoint & point = points[i];
-        drawCornerAt(point);
+    for(auto p : points) {
+        drawCornerAt(p);
     }
 }
 
@@ -610,12 +674,12 @@ void ofxQuadWarp::drawHighlightedCorner() {
   drawHighlightedCorner(dstPoints);
 }
 
-void ofxQuadWarp::drawHighlightedCorner(ofPoint* points) {
+void ofxQuadWarp::drawHighlightedCorner(const std::vector<ofPoint>& points) {
     if((bShow || bShowSrc) == false) return;
 
     if(highlightCornerIndex < 0) return;
 
-    ofPoint & point = points[highlightCornerIndex];
+    const ofPoint & point = points[highlightCornerIndex];
     drawCornerAt(point);
 }
 
@@ -623,12 +687,12 @@ void ofxQuadWarp::drawSelectedCorner() {
   drawSelectedCorner(dstPoints);
 }
 
-void ofxQuadWarp::drawSelectedCorner(ofPoint* points) {
+void ofxQuadWarp::drawSelectedCorner(const std::vector<ofPoint>& points) {
     if((bShow || bShowSrc) == false) return;
 
     if(selectedCornerIndex < 0) return;
     
-    ofPoint & point = points[selectedCornerIndex];
+    const ofPoint & point = points[selectedCornerIndex];
     drawCornerAt(point);
 }
 
