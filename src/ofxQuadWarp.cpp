@@ -154,32 +154,12 @@ void ofxQuadWarp::setSourcePoints(const vector<ofPoint>& points) {
     }
 }
 
-std::vector<ofPoint> ofxQuadWarp::getTargetPoints() {
-    if(bNormalize)
-    {
-        std::vector<ofPoint> norm;
-        norm.reserve(4);
-        for (auto& p : dstPoints)
-            norm.push_back(p * ofGetWindowSize());
-
-        return norm;
-    }
-    else
-        return dstPoints;
+std::vector<ofPoint>& ofxQuadWarp::getTargetPoints() {
+   return dstPoints;
 }
 
-std::vector<ofPoint> ofxQuadWarp::getSourcePoints() {
-    if(bNormalize)
-    {
-        std::vector<ofPoint> norm;
-        norm.reserve(4);
-        for (auto& p : srcPoints)
-            norm.push_back(p * ofGetWindowSize());
-
-        return norm;
-    }
-    else
-      return srcPoints;
+std::vector<ofPoint>& ofxQuadWarp::getSourcePoints() {
+  return srcPoints;
 }
 
 //----------------------------------------------------- matrix.
@@ -288,14 +268,8 @@ void ofxQuadWarp::onMouseDragged(ofMouseEventArgs& mouseArgs) {
 
     if(bShow) {
         dstPoints[selectedCornerIndex].set(mousePoint);
-        ofLogNotice("ofxWarper") << "mousePoint: " << selectedCornerIndex
-                                 << " pos: " << mousePoint
-                                 << " points[selectedCornerIndex]: " << dstPoints[selectedCornerIndex];
     } else if (bShowSrc) {
         srcPoints[selectedCornerIndex].set(mousePoint);
-        ofLogNotice("ofxWarper") << "mousePoint: " << selectedCornerIndex
-                                 << " pos: " << mousePoint
-                                 << " points[selectedCornerIndex]: " << srcPoints[selectedCornerIndex];
     }
 }
 
