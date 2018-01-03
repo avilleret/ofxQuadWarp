@@ -23,8 +23,6 @@ ofxQuadWarp::ofxQuadWarp() {
 ofxQuadWarp::~ofxQuadWarp() {
     disableMouseControls();
     disableKeyboardShortcuts();
-    disableMouseControlsSrc();
-    disableKeyboardShortcutsSrc();
 }
 
 //----------------------------------------------------- setup.
@@ -91,62 +89,6 @@ void ofxQuadWarp::disableKeyboardShortcuts() {
     }
 }
 
-void ofxQuadWarp::enableMouseControlsSrc() {
-    if(bMouseEnabledSrc == true) {
-        return;
-    }
-    if(bMouseEnabled == true){
-      disableMouseControls();
-    }
-    bMouseEnabledSrc = true;
-    ofAddListener(ofEvents().mouseMoved, this, &ofxQuadWarp::onMouseMovedSrc);
-    ofAddListener(ofEvents().mousePressed, this, &ofxQuadWarp::onMousePressedSrc);
-    ofAddListener(ofEvents().mouseDragged, this, &ofxQuadWarp::onMouseDraggedSrc);
-    ofAddListener(ofEvents().mouseReleased, this, &ofxQuadWarp::onMouseReleasedSrc);
-}
-
-void ofxQuadWarp::disableMouseControlsSrc() {
-    if(bMouseEnabledSrc == false) {
-        return;
-    }
-    bMouseEnabledSrc = false;
-    try {
-        ofRemoveListener(ofEvents().mouseMoved, this, &ofxQuadWarp::onMouseMovedSrc);
-        ofRemoveListener(ofEvents().mousePressed, this, &ofxQuadWarp::onMousePressedSrc);
-        ofRemoveListener(ofEvents().mouseDragged, this, &ofxQuadWarp::onMouseDraggedSrc);
-        ofRemoveListener(ofEvents().mouseReleased, this, &ofxQuadWarp::onMouseReleasedSrc);
-    }
-    catch(Poco::SystemException) {
-        return;
-    }
-}
-
-void ofxQuadWarp::enableKeyboardShortcutsSrc() {
-    if(bKeyboardShortcutsSrc == true) {
-        return;
-    }
-    if(bKeyboardShortcuts == true){
-      disableKeyboardShortcuts();
-    }
-    bKeyboardShortcutsSrc = true;
-    ofAddListener(ofEvents().keyPressed, this, &ofxQuadWarp::keyPressedSrc);
-    ofAddListener(ofEvents().keyReleased, this, &ofxQuadWarp::keyReleased);
-}
-
-void ofxQuadWarp::disableKeyboardShortcutsSrc() {
-    if(bKeyboardShortcutsSrc == false) {
-        return;
-    }
-    bKeyboardShortcutsSrc = false;
-    try {
-        ofRemoveListener(ofEvents().keyPressed, this, &ofxQuadWarp::keyPressedSrc);
-        ofRemoveListener(ofEvents().keyReleased, this, &ofxQuadWarp::keyReleased);
-    }
-    catch(Poco::SystemException) {
-        return;
-    }
-}
-
 bool ofxQuadWarp::hitTest(ofVec2f pos) {
     // apply the inverse transformation to our hit point and then
     // compare to the input rectangle
@@ -200,8 +142,15 @@ void ofxQuadWarp::setTargetPoints(const vector<ofPoint>& points) {
 
 void ofxQuadWarp::setSourcePoints(const vector<ofPoint>& points) {
     int t = std::min(4, static_cast<int>(points.size()));
-    for(int i=0; i<t; i++) {
-        srcPoints[i].set(points[i]);
+    if (bNormalize)
+    {
+        for(int i=0; i<t; i++) {
+            srcPoints[i].set(points[i] / ofGetWindowSize());
+        }
+    } else {
+        for(int i=0; i<t; i++) {
+            srcPoints[i].set(points[i]);
+        }
     }
 }
 
@@ -220,22 +169,36 @@ std::vector<ofPoint> ofxQuadWarp::getTargetPoints() {
 }
 
 std::vector<ofPoint> ofxQuadWarp::getSourcePoints() {
-    return srcPoints;
+    if(bNormalize)
+    {
+        std::vector<ofPoint> norm;
+        norm.reserve(4);
+        for (auto& p : srcPoints)
+            norm.push_back(p * ofGetWindowSize());
+
+        return norm;
+    }
+    else
+      return srcPoints;
 }
 
 //----------------------------------------------------- matrix.
 ofMatrix4x4 ofxQuadWarp::getMatrix() const {
-    return getMatrix(ofGetWindowSize());
+  return getMatrix(srcPoints,dstPoints);
 }
 
-ofMatrix4x4 ofxQuadWarp::getMatrix(ofVec3f scale) const {
+ofMatrix4x4 ofxQuadWarp::getMatrixScaled(
+    ofVec3f src_scale, ofVec3f dst_scale) const
+{
     auto src = srcPoints;
     auto dst = dstPoints;
 
     if (bNormalize)
     {
+        for (auto& p : src)
+            p *= src_scale;
         for (auto& p : dst)
-            p *= scale;
+            p *= dst_scale;
     }
 
     return getMatrix(src,dst);
@@ -258,9 +221,6 @@ void ofxQuadWarp::reset() {
 
 //----------------------------------------------------- interaction.
 void ofxQuadWarp::onMouseMoved(ofMouseEventArgs& mouseArgs) {
-    if(bShow == false) {
-        return;
-    }
     
     ofPoint mousePoint(mouseArgs.x, mouseArgs.y);
     float threshold = anchorSize * 0.5;
@@ -271,8 +231,16 @@ void ofxQuadWarp::onMouseMoved(ofMouseEventArgs& mouseArgs) {
     }
 
     for(int i=0; i<4; i++) {
-        ofPoint & dstPoint = dstPoints[i];
-        if(mousePoint.distance(dstPoint) <= threshold) {
+      ofPoint* pt{};
+
+        if(bShow) {
+            pt = &dstPoints[i];
+        } else if (bShowSrc) {
+            pt = &srcPoints[i];
+        } else {
+            return;
+        }
+        if(mousePoint.distance(*pt) <= threshold) {
             highlightCornerIndex = i;
             return;
         }
@@ -281,10 +249,7 @@ void ofxQuadWarp::onMouseMoved(ofMouseEventArgs& mouseArgs) {
 }
 
 void ofxQuadWarp::onMousePressed(ofMouseEventArgs& mouseArgs) {
-    if(bShow == false) {
-        return;
-    }
-    
+
     ofPoint mousePoint(mouseArgs.x, mouseArgs.y);
     float threshold = anchorSize * 0.5;
 
@@ -294,9 +259,17 @@ void ofxQuadWarp::onMousePressed(ofMouseEventArgs& mouseArgs) {
     }
 
     for(int i=0; i<4; i++) {
-        ofPoint & dstPoint = dstPoints[i];
-        if(mousePoint.distance(dstPoint) <= threshold) {
-            dstPoint.set(mousePoint);
+        ofPoint* pt{};
+        if(bShow) {
+            pt = &dstPoints[i];
+        } else if (bShowSrc) {
+            pt = &srcPoints[i];
+        } else {
+          return;
+        }
+
+        if(mousePoint.distance(*pt) <= threshold) {
+            pt->set(mousePoint);
             selectedCornerIndex = i;
             return;
         }
@@ -305,9 +278,7 @@ void ofxQuadWarp::onMousePressed(ofMouseEventArgs& mouseArgs) {
 }
 
 void ofxQuadWarp::onMouseDragged(ofMouseEventArgs& mouseArgs) {
-    if(bShow == false) {
-        return;
-    }
+
     if(selectedCornerIndex < 0) return; // no corner selected
     
     ofPoint mousePoint(mouseArgs.x, mouseArgs.y);
@@ -315,13 +286,21 @@ void ofxQuadWarp::onMouseDragged(ofMouseEventArgs& mouseArgs) {
     if (bNormalize)
         mousePoint /= ofGetWindowSize();
 
-    dstPoints[selectedCornerIndex].set(mousePoint);
+    if(bShow) {
+        dstPoints[selectedCornerIndex].set(mousePoint);
+        ofLogNotice("ofxWarper") << "mousePoint: " << selectedCornerIndex
+                                 << " pos: " << mousePoint
+                                 << " points[selectedCornerIndex]: " << dstPoints[selectedCornerIndex];
+    } else if (bShowSrc) {
+        srcPoints[selectedCornerIndex].set(mousePoint);
+        ofLogNotice("ofxWarper") << "mousePoint: " << selectedCornerIndex
+                                 << " pos: " << mousePoint
+                                 << " points[selectedCornerIndex]: " << srcPoints[selectedCornerIndex];
+    }
 }
 
 void ofxQuadWarp::onMouseReleased(ofMouseEventArgs& mouseArgs) {
-    if(bShow == false) {
-        return;
-    }
+
     if(selectedCornerIndex < 0) return; // none selected
     
     ofPoint mousePoint(mouseArgs.x, mouseArgs.y);
@@ -329,13 +308,14 @@ void ofxQuadWarp::onMouseReleased(ofMouseEventArgs& mouseArgs) {
     if (bNormalize)
         mousePoint /= ofGetWindowSize();
 
-    dstPoints[selectedCornerIndex].set(mousePoint);
+    if(bShow) {
+        dstPoints[selectedCornerIndex].set(mousePoint);
+    } else if (bShowSrc) {
+        srcPoints[selectedCornerIndex].set(mousePoint);
+    }
 }
 
 void ofxQuadWarp::keyPressed(ofKeyEventArgs& keyArgs) {
-    if(bShow == false) {
-        return;
-    }
 
     if(keyArgs.key == OF_KEY_SHIFT)
         bShiftPressed = true;
@@ -356,20 +336,28 @@ void ofxQuadWarp::keyPressed(ofKeyEventArgs& keyArgs) {
     if (bNormalize)
         nudgeAmount /= ofGetWidth();
 
-    ofPoint & selectedPoint = dstPoints[selectedCornerIndex];
-    
+    ofPoint* selectedPoint{};
+
+    if(bShow) {
+        selectedPoint = &dstPoints[selectedCornerIndex];
+    } else if (bShowSrc) {
+        selectedPoint = &srcPoints[selectedCornerIndex];
+    } else {
+        return;
+    }
+
     switch (keyArgs.key) {
     case OF_KEY_LEFT:
-        selectedPoint.x -= nudgeAmount;
+        selectedPoint->x -= nudgeAmount;
         break;
     case OF_KEY_RIGHT:
-        selectedPoint.x += nudgeAmount;
+        selectedPoint->x += nudgeAmount;
         break;
     case OF_KEY_UP:
-        selectedPoint.y -= nudgeAmount;
+        selectedPoint->y -= nudgeAmount;
         break;
     case OF_KEY_DOWN:
-        selectedPoint.y += nudgeAmount;
+        selectedPoint->y += nudgeAmount;
         break;
     default:
         break;
@@ -381,111 +369,24 @@ void ofxQuadWarp::keyReleased(ofKeyEventArgs& keyArgs) {
         bShiftPressed = false;
 }
 
-//----------------------------------------------------- interaction for source points.
-void ofxQuadWarp::onMouseMovedSrc(ofMouseEventArgs& mouseArgs) {
-    if(bShowSrc == false) {
-        return;
-    }
-
-    ofPoint mousePoint(mouseArgs.x, mouseArgs.y);
-    for(int i=0; i<4; i++) {
-        ofPoint & srcPoint = srcPoints[i];
-        if(mousePoint.distance(srcPoint) <= anchorSize * 0.5) {
-            highlightCornerIndex = i;
-            return;
-        }
-    }
-    highlightCornerIndex = -1;
-}
-
-void ofxQuadWarp::onMousePressedSrc(ofMouseEventArgs& mouseArgs) {
-    if(bShowSrc == false) {
-        return;
-    }
-
-    ofPoint mousePoint(mouseArgs.x, mouseArgs.y);
-    for(int i=0; i<4; i++) {
-        ofPoint & srcPoint = srcPoints[i];
-        if(mousePoint.distance(srcPoint) <= anchorSize * 0.5) {
-            srcPoint.set(mousePoint);
-            selectedCornerIndex = i;
-            return;
-        }
-    }
-    selectedCornerIndex = -1;
-}
-
-void ofxQuadWarp::onMouseDraggedSrc(ofMouseEventArgs& mouseArgs) {
-    if(bShowSrc == false) {
-        return;
-    }
-    if(selectedCornerIndex < 0) return; // no corner selected
-
-    ofPoint mousePoint(mouseArgs.x, mouseArgs.y);
-    srcPoints[selectedCornerIndex].set(mousePoint);
-}
-
-void ofxQuadWarp::onMouseReleasedSrc(ofMouseEventArgs& mouseArgs) {
-    if(bShowSrc == false) {
-        return;
-    }
-    if(selectedCornerIndex < 0) return; // none selected
-
-    ofPoint mousePoint(mouseArgs.x, mouseArgs.y);
-    srcPoints[selectedCornerIndex].set(mousePoint);
-}
-
-void ofxQuadWarp::keyPressedSrc(ofKeyEventArgs& keyArgs) {
-    if(bShowSrc == false) {
-        return;
-    }
-
-    if(keyArgs.key == OF_KEY_SHIFT)
-        bShiftPressed = true;
-
-    if(keyArgs.key == 'p') { // select nxt pt
-        selectedCornerIndex = (selectedCornerIndex + 1) % 4;
-    }
-    else if(keyArgs.key == 'o') { // select prev pt
-        selectedCornerIndex = (selectedCornerIndex - 1);
-        if(selectedCornerIndex < 0)
-            selectedCornerIndex = 3;
-    }
-
-    if(selectedCornerIndex < 0) return; // no corner selected. only happens if we didn't select one using 'o'/'p' before
-
-    float nudgeAmount = 0.25;
-    if(bShiftPressed) nudgeAmount = 10;
-    ofPoint & selectedPoint = srcPoints[selectedCornerIndex];
-
-    switch (keyArgs.key) {
-    case OF_KEY_LEFT:
-        selectedPoint.x -= nudgeAmount;
-        break;
-    case OF_KEY_RIGHT:
-        selectedPoint.x += nudgeAmount;
-        break;
-    case OF_KEY_UP:
-        selectedPoint.y -= nudgeAmount;
-        break;
-    case OF_KEY_DOWN:
-        selectedPoint.y += nudgeAmount;
-        break;
-    default:
-        break;
-    }
-}
-
 //----------------------------------------------------- show / hide.
 void ofxQuadWarp::show() {
-    if(bShow) return;
-    if(bShowSrc) bShowSrc = false;
+    if(bShow)
+      return;
+
+    if(bShowSrc)
+      bShowSrc = false;
+
     toggleShow();
 }
 
 void ofxQuadWarp::showSrc() {
-    if(bShowSrc) return;
-    if(bShow) bShow = false;
+    if(bShowSrc)
+      return;
+
+    if(bShow)
+      bShow = false;
+
     toggleShowSrc();
 }
 
@@ -600,46 +501,35 @@ void ofxQuadWarp::load(const string& path) {
 //----------------------------------------------------- show / hide.
 void ofxQuadWarp::draw() {
   ofPushStyle();
-    if(bShow){
+  std::vector<ofPoint> points;
 
-      std::vector<ofPoint> points = dstPoints;
-      if (bNormalize)
-      {
-          for (auto& p : points)
-              p *= ofGetWindowSize();
-      }
-      ofSetColor(ofColor::cyan);
-      drawQuadOutline(points);
+  if(bShow)
+  {
+    points = dstPoints;
+  }
+  else if (bShowSrc)
+  {
+    points = srcPoints;
+  }
 
-      ofSetColor(ofColor::yellow);
-      drawCorners(points);
+  if (bNormalize)
+  {
+    for (auto& p : points)
+      p *= ofGetWindowSize();
+  }
+  ofSetColor(ofColor::cyan);
+  drawQuadOutline(points);
 
-      ofSetColor(ofColor::magenta);
-      drawHighlightedCorner(points);
+  ofSetColor(ofColor::yellow);
+  drawCorners(points);
 
-      ofSetColor(ofColor::red);
-      drawSelectedCorner(points);
+  ofSetColor(ofColor::magenta);
+  drawHighlightedCorner(points);
 
-    } else if(bShowSrc){
+  ofSetColor(ofColor::red);
+  drawSelectedCorner(points);
 
-      ofSetColor(ofColor::green);
-      drawQuadOutline(srcPoints);
-
-      ofSetColor(ofColor::yellow);
-      drawCorners(srcPoints);
-
-      ofSetColor(ofColor::magenta);
-      drawHighlightedCorner(srcPoints);
-
-      ofSetColor(ofColor::red);
-      drawSelectedCorner(srcPoints);
-
-    }
-    ofPopStyle();
-}
-
-void ofxQuadWarp::drawSrc() {
-
+  ofPopStyle();
 }
 
 void ofxQuadWarp::drawQuadOutline() {
