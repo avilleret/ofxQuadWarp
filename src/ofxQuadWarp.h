@@ -32,12 +32,6 @@ public:
     void enableKeyboardShortcuts();
     void disableKeyboardShortcuts();
 
-    void enableMouseControlsSrc();
-    void disableMouseControlsSrc();
-
-    void enableKeyboardShortcutsSrc();
-    void disableKeyboardShortcutsSrc();
-
     bool hitTest(ofVec2f pos); // checks whether `pos` is within the warped quad
     ofRectangle boundingBox(); // calculates and returns a bounding box
 
