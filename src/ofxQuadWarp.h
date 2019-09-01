@@ -23,8 +23,8 @@ public:
     void setTargetRect(const ofRectangle& rect);
     void setTargetPoints(const vector<ofPoint>& points);
     void setSourcePoints(const vector<ofPoint>& points);
-    vector<ofPoint>& getTargetPoints();
-    vector<ofPoint>& getSourcePoints();
+    vector<glm::vec3>& getTargetPoints();
+    vector<glm::vec3>& getSourcePoints();
 
     void enableMouseControls();
     void disableMouseControls();
@@ -45,7 +45,7 @@ public:
     ofMatrix4x4 getMatrix() const;
     ofMatrix4x4 getMatrixScaled(ofVec3f src_scale, ofVec3f dst_scale) const;
     ofMatrix4x4 getMatrixInverse() const;
-    ofMatrix4x4 getMatrix(const std::vector<ofPoint>& srcPoints, const std::vector<ofPoint>& dstPoints) const;
+    ofMatrix4x4 getMatrix(const std::vector<glm::vec3>& srcPoints, const std::vector<glm::vec3>& dstPoints) const;
 
     void show();
     void hide();
@@ -60,13 +60,13 @@ public:
 
     void draw();
     void drawQuadOutline();
-    void drawQuadOutline(const std::vector<ofPoint>& point);
+    void drawQuadOutline(const std::vector<glm::vec3>& point);
     void drawCorners();
-    void drawCorners(const std::vector<ofPoint>& points);
-    void drawHighlightedCorner(const std::vector<ofPoint>& points);
+    void drawCorners(const std::vector<glm::vec3>& points);
+    void drawHighlightedCorner(const std::vector<glm::vec3>& points);
     void drawHighlightedCorner();
     void drawSelectedCorner();
-    void drawSelectedCorner(const std::vector<ofPoint>& points);
+    void drawSelectedCorner(const std::vector<glm::vec3>& points);
     void drawCornerAt(const ofPoint& point);
 
     void onMouseMoved(ofMouseEventArgs & mouseArgs);
@@ -79,8 +79,8 @@ public:
     bool bShow{}, bShowSrc{};
 
 protected:
-    std::vector<ofPoint> srcPoints;
-    std::vector<ofPoint> dstPoints;
+    std::vector<glm::vec3> srcPoints;
+    std::vector<glm::vec3> dstPoints;
 
     float anchorSize{};
     int selectedCornerIndex{};
